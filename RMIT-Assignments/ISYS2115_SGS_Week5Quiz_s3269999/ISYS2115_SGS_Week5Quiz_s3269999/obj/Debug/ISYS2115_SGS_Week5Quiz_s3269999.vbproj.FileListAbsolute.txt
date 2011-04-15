@@ -1,0 +1,11 @@
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\bin\Debug\ISYS2115_SGS_Week5Quiz_s3269999.exe
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\bin\Debug\ISYS2115_SGS_Week5Quiz_s3269999.pdb
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\bin\Debug\ISYS2115_SGS_Week5Quiz_s3269999.xml
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ResolveAssemblyReference.cache
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.frmListboxExample.resources
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.Resources.resources
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.vbproj.GenerateResource.Cache
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.exe
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.xml
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.pdb
+C:\Users\Tommy\AppData\Local\Temporary Projects\ISYS2115_SGS_Week5Quiz_s3269999\obj\Debug\ISYS2115_SGS_Week5Quiz_s3269999.frmKilosToPoundsConverter.resources
