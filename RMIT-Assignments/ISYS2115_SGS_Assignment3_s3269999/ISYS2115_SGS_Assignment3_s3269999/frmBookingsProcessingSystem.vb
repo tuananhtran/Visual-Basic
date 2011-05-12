@@ -1,0 +1,574 @@
+﻿'Project: Paradise Bookings Processing System
+'Assignment: Number 3
+'Programmer: Tran Tuan Anh
+'Created: 4th May, 2011
+'Application Purpose: This program is to record and store room bookings of Paradise Beach Resort
+'Form Purpose: This is the main form, which allows managers to enter user details and their bookings for calculating and storing
+
+'import libraries for stream reader and stream writer
+Imports System.IO
+
+Public Class frmBookingsProcessingSystem
+
+    'declare max number of room types as constant
+    Const iMaxNumOfRoomTypes As Integer = 5
+
+    'declare arrays to store information for each room type
+    Dim sRoomTypeIDs(iMaxNumOfRoomTypes - 1) As String
+    Dim sRoomTypes(iMaxNumOfRoomTypes - 1) As String
+    Dim iRoomSizes(iMaxNumOfRoomTypes - 1) As Integer
+    Dim dRoomRates(iMaxNumOfRoomTypes - 1) As Double
+
+    Private Sub frmBookingsProcessSystem_Load(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles MyBase.Load
+        'actions to do on form load
+
+        'load information of room types from database
+        Call loadRoomInformation()
+
+        'set booking details
+        Call setBookingDetails()
+
+        'set minimum date for arrival date as today
+        dtpArrivalDate.MinDate = Today
+
+        'update total cost (initial value is 0)
+        Call updateTotalCost()
+
+    End Sub
+
+    Private Sub loadRoomInformation()
+        'load information for each room type
+
+        'declare variable to room database name and location
+        Const sRoomDatabase As String = "ParadiseRooms.txt" 'room database file
+        Dim sRoomDatabaseLocation As String = Application.StartupPath & "\" & sRoomDatabase 'path to room database file        
+
+        'check if file exists
+        If Not File.Exists(sRoomDatabaseLocation) Then
+
+            'if file not found, display error message
+            MsgBox("Room database file (ParadiseRooms.txt) does not exist!", MsgBoxStyle.Critical, "File not found!")
+
+            'close the form and exit the application
+            Me.Close()
+            frmLogin.Close()
+
+        Else
+
+            'declare stream reader and temporary variables
+            Dim srRoomDatabaseReader As StreamReader = File.OpenText(sRoomDatabaseLocation)    'stream reader to read room database content
+            Dim sLine As String 'temporary variable to store current pointed line in room database, used by stream reader
+            Dim sFields() As String 'array to store fields splitted from sLine
+            Dim iCounter As Integer = 0 'counter to synchronize line index with array index
+
+            'read first line of the file
+            sLine = srRoomDatabaseReader.ReadLine
+
+            'scan through each line of the file to get information
+            While sLine <> Nothing
+
+                'split retrieved line by delimiter comma (,)
+                sFields = Split(sLine, ",")
+
+                'validate retrieved fields and get error message (if existed)
+                Dim sErrorMessage As String = bRoomRecordIsValid(sFields)
+
+                If sErrorMessage <> "" Then
+
+                    'if error exists, display error message
+                    MsgBox("Cannot load room type information from database! " & _
+                           vbCrLf & sErrorMessage & " at line " & (iCounter + 1) & "!", _
+                           MsgBoxStyle.Critical, "Initialization error!")
+
+                    'close the form and exit the application
+                    Me.Close()
+                    frmLogin.Close()
+
+                End If
+
+                'add new item to room info. arrays
+                sRoomTypeIDs(iCounter) = sFields(0)
+                sRoomTypes(iCounter) = sFields(1)
+                iRoomSizes(iCounter) = CInt(sFields(2))
+                dRoomRates(iCounter) = CDbl(sFields(3))
+
+                'read next line in the file
+                sLine = srRoomDatabaseReader.ReadLine
+
+                'increment index counter by 1
+                iCounter += 1
+
+            End While
+
+            'close the file
+            srRoomDatabaseReader.Close()
+
+            If sRoomTypeIDs(0) = "" Then
+
+                'if no records retrieved, display error message
+                MsgBox("Room Type Database is blank!", MsgBoxStyle.Critical, "Initialization Error!")
+
+                'close the form and exit the application
+                Me.Close()
+                frmLogin.Close()
+
+            Else
+
+                'else, set room type ids as loaded from database
+                For Each sTypeID As String In sRoomTypeIDs
+                    cmbRoomTypeID.Items.Add(sTypeID)
+                Next
+
+            End If
+
+        End If
+    End Sub
+
+    Private Sub setBookingDetails()
+        'set booking details for current session
+
+        'set logged in manager name
+        lblManagerNameValue.Text = frmLogin.txtManagerName.Text
+
+        'set booking id: VNxxx (x is a number, randomly generated by computer)
+        'get current timestamp as seed for randomization
+        Randomize()
+        'get random number from 000 to 999 and return booking id
+        lblBookingIDValue.Text = Format(Rnd() * 1000, "VN000")
+
+        'set booking date as current date
+        lblBookingDateValue.Text = FormatDateTime(Today, DateFormat.LongDate)
+
+    End Sub
+
+    Private Sub cmbRoomTypeID_SelectedIndexChanged(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles cmbRoomTypeID.SelectedIndexChanged
+
+        'if selected index is of default value (-1), change room type, size and rate accordingly to room type id
+        If cmbRoomTypeID.SelectedIndex <> -1 Then
+
+            'get selected index
+            Dim iIndex As Integer = cmbRoomTypeID.SelectedIndex
+
+            'change room type, size and rate
+            lblRoomTypeValue.Text = sRoomTypes(iIndex)
+            lblRoomSizeValue.Text = CInt(iRoomSizes(iIndex))
+            lblRoomRateValue.Text = FormatCurrency(dRoomRates(iIndex))
+
+        End If
+
+    End Sub
+
+    Private Sub updateTotalCost()
+        'update total cost based on records in data grid view
+
+        'declare variable to store current total cost
+        Dim dTotalCost As Double = 0
+
+        'loop through each item in data grid view to add to total cost
+        For iCounter As Integer = 0 To dgvBookings.Rows.Count - 1
+
+            'add subtotal to total cost
+            dTotalCost += CDbl(dgvBookings.Rows(iCounter).Cells(11).Value)
+
+        Next
+
+        'display total cost
+        lblTotalValue.Text = FormatCurrency(dTotalCost)
+
+    End Sub
+
+    Private Sub miAddBooking_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miAddBooking.Click
+        'add new booking to data grid view
+
+        If bCustomerDetailsIsValid() Then
+
+            'if customer details validation passed, validate room details
+            If bRoomDetailsIsValid() Then
+                'if room details validation passed, add new booking to data grid view
+
+                'add new row to data grid view amd get its index
+                Dim iIndex As Integer = dgvBookings.Rows.Add()
+
+                'add room details to the new row
+                dgvBookings.Rows(iIndex).Cells(0).Value = cmbRoomTypeID.SelectedItem.ToString
+                dgvBookings.Rows(iIndex).Cells(1).Value = lblRoomTypeValue.Text
+                dgvBookings.Rows(iIndex).Cells(2).Value = lblRoomSizeValue.Text
+                dgvBookings.Rows(iIndex).Cells(3).Value = lblRoomRateValue.Text
+                dgvBookings.Rows(iIndex).Cells(4).Value = FormatDateTime(dtpArrivalDate.Value, DateFormat.ShortDate)
+                dgvBookings.Rows(iIndex).Cells(5).Value = nudArrivalTime.Value & " pm"
+                dgvBookings.Rows(iIndex).Cells(6).Value = nudNumberOfNights.Value
+                dgvBookings.Rows(iIndex).Cells(7).Value = nudNumberOfAdults.Value
+                dgvBookings.Rows(iIndex).Cells(8).Value = nudNumberOfChildren.Value
+
+                'check if number of adults is more than 2
+                If nudNumberOfAdults.Value > 2 Then
+
+                    'if number of adults is more than 2, calculate extra bed cost = ($45.00) x (number of nights)
+                    dgvBookings.Rows(iIndex).Cells(9).Value = FormatCurrency(45 * nudNumberOfNights.Value)
+
+                Else
+
+                    'else, set extra bed cost as 0
+                    dgvBookings.Rows(iIndex).Cells(9).Value = FormatCurrency(0)
+
+                End If
+
+                'get room cost (excluded tax and service charges)
+                Dim dRawCost As Double = dRoomCost(iIndex)
+
+                'add room cost to the record
+                dgvBookings.Rows(iIndex).Cells(10).Value = FormatCurrency(dRawCost)
+
+                'add subtotal (included tax and service charges) to the record
+                dgvBookings.Rows(iIndex).Cells(11).Value = FormatCurrency(dRawCost * 1.15)
+
+                'update total cost
+                Call updateTotalCost()
+
+            End If
+
+        End If
+    End Sub
+
+    Private Function dRoomCost(ByVal iIndex As Integer) As Double
+        'calculate room cost (before taxes and service charges applied)
+
+        'get room rate, number of nights and extra bed cost
+        Dim dRoomRate As Double = CDbl(dgvBookings.Rows(iIndex).Cells(3).Value)
+        Dim iNumberOfNights As Integer = CInt(dgvBookings.Rows(iIndex).Cells(6).Value)
+        Dim dExtraBedCost As Double = CDbl(dgvBookings.Rows(iIndex).Cells(9).Value)
+
+        'return room cost
+        Return dRoomRate * iNumberOfNights + dExtraBedCost
+
+    End Function
+
+    Private Sub miReset_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miReset.Click
+        'clear all fiels of customer details, room details and bookings
+
+        'call subroutine to clear customer details
+        Call clearCustomerDetails()
+
+        'reload room type information
+        Call loadRoomInformation()
+
+        'call subroutine to clear room details
+        Call clearRoomDetails()
+
+        'call subroutine to clear bookings
+        Call clearBookings()
+
+    End Sub
+
+    Private Sub miExit_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miExit.Click
+        'confirm exiting command from user
+
+        'display message box to as if user want to exit; YesNoCancel is chosen instead of YesNo style to allow aborting with Esc key (as most users do)
+        If MsgBox("Are you sure you want to exit?", MsgBoxStyle.YesNoCancel, "Exit confirmation") = MsgBoxResult.Yes Then
+            'if user chooses Yes, close current form, save all information and exit the application
+
+            'hide current form
+            Me.Hide()
+
+            'save all booking information of current session
+            Call saveAllBookings()
+
+            'exit the application
+            frmLogin.Close()
+
+        End If
+    End Sub
+
+    Private Sub saveAllBookings()
+        'save all booking information of this session
+
+        'if there is at least one item in data grid view, open file(s) for writing
+        If dgvBookings.Rows.Count > 0 Then
+
+            'declare database file name and location for each room type
+            Const sSUDatabase As String = "SU.txt"  'database file name for Superior room type
+            Const sDEDatabase As String = "DE.txt"  'database file name for Deluxe room type
+            Const sPDDatabase As String = "PD.txt"  'database file name for Premium Deluxe room type
+            Const sJSDatabase As String = "JS.txt"  'database file name for Junior Suite room type
+            Const sPSDatabase As String = "PS.txt"  'database file name for Presidential Suite room type
+            Dim sSUDatabaseLocation As String = Application.StartupPath & "\" & sSUDatabase 'database location for Superior room type
+            Dim sDEDatabaseLocation As String = Application.StartupPath & "\" & sDEDatabase 'database location for Deluxe room type
+            Dim sPDDatabaseLocation As String = Application.StartupPath & "\" & sPDDatabase 'database location for Premium Deluxe room type
+            Dim sJSDatabaseLocation As String = Application.StartupPath & "\" & sJSDatabase 'database location for Junior Suite room type
+            Dim sPSDatabaseLocation As String = Application.StartupPath & "\" & sPSDatabase 'database location for Presidential Suite room type
+
+            'loop through each item in the data grid view to add bookings to database
+            For iCounter As Integer = 0 To dgvBookings.Rows.Count - 1
+
+                If dgvBookings.Rows(iCounter).Cells(0).Value = "SU" Then
+
+                    'declare writer for SU database
+                    Dim swSUDatabaseWriter As StreamWriter = New StreamWriter(sSUDatabaseLocation, True)
+
+                    'if room type id is SU, write row fields to SU database
+                    writeToDatabase(swSUDatabaseWriter, iCounter)
+
+                    'close the file
+                    swSUDatabaseWriter.Close()
+
+                End If
+
+                If dgvBookings.Rows(iCounter).Cells(0).Value = "DE" Then
+
+                    'declare writer for DE database
+                    Dim swDEDatabaseWriter As StreamWriter = New StreamWriter(sDEDatabaseLocation, True)
+
+                    'if room type id is DE, write row fields to DE database
+                    writeToDatabase(swDEDatabaseWriter, iCounter)
+
+                    'close the file
+                    swDEDatabaseWriter.Close()
+
+                End If
+
+                If dgvBookings.Rows(iCounter).Cells(0).Value = "PD" Then
+
+                    'declare writer for PD database
+                    Dim swPDDatabaseWriter As StreamWriter = New StreamWriter(sPDDatabaseLocation, True)
+
+                    'if room type id is PD, write row fields to PD database
+                    writeToDatabase(swPDDatabaseWriter, iCounter)
+
+                    'close the file
+                    swPDDatabaseWriter.Close()
+
+                End If
+
+                If dgvBookings.Rows(iCounter).Cells(0).Value = "JS" Then
+
+                    'declare writer for JS database
+                    Dim swJSDatabaseWriter As StreamWriter = New StreamWriter(sJSDatabaseLocation, True)
+
+                    'if room type id is JS, write row fields to JS database
+                    writeToDatabase(swJSDatabaseWriter, iCounter)
+
+                    'close the file
+                    swJSDatabaseWriter.Close()
+
+                End If
+
+                If dgvBookings.Rows(iCounter).Cells(0).Value = "PS" Then
+
+                    'declare writer for PS database
+                    Dim swPSDatabaseWriter As StreamWriter = New StreamWriter(sPSDatabaseLocation, True)
+
+                    'if room type id is PS, write row fields to PS database
+                    writeToDatabase(swPSDatabaseWriter, iCounter)
+
+                    'close the file
+                    swPSDatabaseWriter.Close()
+
+                End If
+
+            Next
+
+        End If
+
+    End Sub
+
+    Private Sub writeToDatabase(ByVal swWriter As StreamWriter, ByVal iIndex As Integer)
+        'write data from data grid view with index iIndex to destination file by stream writer swWriter
+
+        'write manager name to file, followed by delimiter ","
+        swWriter.Write(lblManagerNameValue.Text & ",")
+
+        'write booking id to file, followed by delimiter ","
+        swWriter.Write(lblBookingIDValue.Text & ",")
+
+        'write booking date to file, followed by delimiter ","
+        swWriter.Write(CDate(lblBookingDateValue.Text).ToShortDateString & ",")
+
+        'write customer last name to file, followed by delimiter ","
+        swWriter.Write(txtLastName.Text & ",")
+
+        'write customer first name to file, followed by delimiter ","
+        swWriter.Write(txtFirstName.Text & ",")
+
+        'write arrival date to file, followed by delimiter ","
+        swWriter.Write(dgvBookings.Rows(iIndex).Cells(4).Value & ",")
+
+        'write arrival time to file, followed by delimiter ","
+        swWriter.Write(dgvBookings.Rows(iIndex).Cells(5).Value & ",")
+
+        'write room type to file, followed by delimiter ","
+        swWriter.Write(dgvBookings.Rows(iIndex).Cells(1).Value & ",")
+
+        'write room rate to file, followed by delimiter ","
+        swWriter.Write(FormatNumber(dgvBookings.Rows(iIndex).Cells(3).Value, 2) & ",")
+
+        'write number of nights to file, followed by delimiter ","
+        swWriter.Write(dgvBookings.Rows(iIndex).Cells(6).Value & ",")
+
+        'write number of adults to file, followed by delimiter ","
+        swWriter.Write(dgvBookings.Rows(iIndex).Cells(7).Value & ",")
+
+        'write number of children to file, followed by delimiter ","
+        swWriter.Write(dgvBookings.Rows(iIndex).Cells(8).Value & ",")
+
+        'write room cost to file, followed by delimiter ","
+        swWriter.WriteLine(FormatNumber(dgvBookings.Rows(iIndex).Cells(10).Value, 2))
+
+    End Sub
+
+    Private Sub miClearAllBookings_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miClearAllBookings.Click
+
+        'call subroutine to clear bookings
+        Call clearBookings()
+
+    End Sub
+
+    Private Sub miClearRoomDetails_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miClearRoomDetails.Click
+
+        'call subroutine to clear room details
+        Call clearRoomDetails()
+
+    End Sub
+
+    Private Sub miClearCustomerDetails_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miClearCustomerDetails.Click
+
+        'call subroutine to clear customer details
+        Call clearCustomerDetails()
+
+    End Sub
+
+    Private Sub clearCustomerDetails()
+
+        'clear and reset all customer detail fields to default value
+        cmbTitle.SelectedIndex = -1
+        txtLastName.Text = ""
+        txtFirstName.Text = ""
+        txtAddress.Text = ""
+        txtCity.Text = ""
+        cmbCountry.SelectedIndex = -1
+        txtEmail.Text = ""
+        txtTelephone.Text = ""
+        txtMobile.Text = ""
+
+    End Sub
+
+    Private Sub clearRoomDetails()
+
+        'clear and reset all room detail fields to default value
+        cmbRoomTypeID.SelectedIndex = -1
+        lblRoomTypeValue.Text = ""
+        lblRoomSizeValue.Text = ""
+        lblRoomRateValue.Text = ""
+        dtpArrivalDate.Value = Today
+        nudArrivalTime.Value = 1
+        nudNumberOfNights.Value = 1
+        nudNumberOfAdults.Value = 1
+        nudNumberOfChildren.Value = 0
+
+    End Sub
+
+    Private Sub clearBookings()
+
+        'clear all bookings in the data grid view
+        dgvBookings.Rows.Clear()
+
+        'reset total cost to $0.00
+        lblTotalValue.Text = FormatCurrency(0)
+
+    End Sub
+
+    Private Sub miCreateHTMLForRoomTypes_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miCreateHTMLForRoomTypes.Click
+        'create html file which contains information (taken from ParadiseRooms.txt) for all room types, old file will be overwritten
+
+        'reload room type information from database
+        Call loadRoomInformation()
+
+        'create and open HTML page
+        Call createHTMLPage()
+
+    End Sub
+
+    Private Sub createHTMLPage()
+        'create HTML page for data loaded from ParadiseRooms.txt
+
+        'declare html page name and location
+        Const sRoomTypePage As String = "room_types.html"   'html page containing room type info.
+        Dim sRoomTypePageLocation As String = Application.StartupPath & "\" & sRoomTypePage 'local path to the html page
+
+        'declare stream writer for target html file
+        Dim swRoomTypePageWriter As StreamWriter = New StreamWriter(sRoomTypePageLocation)  'overwriting mode
+
+        'begin to write information to file
+        swRoomTypePageWriter.WriteLine("<HTML>")
+
+        'write head part to file
+        swRoomTypePageWriter.WriteLine("<HEAD>")
+        swRoomTypePageWriter.WriteLine("<TITLE>Paradise Beach Resort - Room Types Information</TITLE>")
+        swRoomTypePageWriter.WriteLine("</HEAD>")
+
+        'begin to write body part
+        swRoomTypePageWriter.WriteLine("<BODY>")
+
+        'write page heading to file
+        swRoomTypePageWriter.WriteLine("<H1>Available Room Types</H1>")
+
+        'create new table to display room type info.
+        swRoomTypePageWriter.WriteLine("<TABLE BORDER=""5"" CELLPADDING=""10"">")
+
+        'define all column headings for this table
+        swRoomTypePageWriter.WriteLine("<TR BGCOLOR=""LIGHTGRAY"" ALIGN=""CENTER"">")
+        swRoomTypePageWriter.WriteLine("<TH>#</TH>")
+        swRoomTypePageWriter.WriteLine("<TH>Room Type ID</TH>")
+        swRoomTypePageWriter.WriteLine("<TH>Room Type</TH>")
+        swRoomTypePageWriter.WriteLine("<TH>Room Size</TH>")
+        swRoomTypePageWriter.WriteLine("<TH>Room Rate</TH>")
+        swRoomTypePageWriter.WriteLine("</TR>")
+
+        'loop through all item in room arrays to add to current table
+        For iCounter As Integer = 0 To sRoomTypeIDs.Length - 1
+
+            'get data from paralel arrays to write to file
+            swRoomTypePageWriter.WriteLine("<TR>")
+            swRoomTypePageWriter.WriteLine("<TD ALIGN=""RIGHT"">" & (iCounter + 1) & "</TD>")
+            swRoomTypePageWriter.WriteLine("<TD ALIGN=""CENTER"">" & sRoomTypeIDs(iCounter) & "</TD>")
+            swRoomTypePageWriter.WriteLine("<TD ALIGN=""CENTER"">" & sRoomTypes(iCounter) & "</TD>")
+            swRoomTypePageWriter.WriteLine("<TD ALIGN=""RIGHT"">" & iRoomSizes(iCounter) & "</TD>")
+            swRoomTypePageWriter.WriteLine("<TD ALIGN=""LEFT"">" & FormatCurrency(dRoomRates(iCounter)) & "</TD>")
+            swRoomTypePageWriter.WriteLine("</TR>")
+
+        Next
+
+        swRoomTypePageWriter.WriteLine("</TABLE>")
+        swRoomTypePageWriter.WriteLine("</BODY>")
+        swRoomTypePageWriter.WriteLine("</HTML>")
+
+        'close file
+        swRoomTypePageWriter.Close()
+
+        'open created HTML to view on browser
+        Process.Start(sRoomTypePageLocation)
+
+    End Sub
+
+    Private Sub miSearchBookings_Click(ByVal sender As System.Object, ByVal e As System.EventArgs) Handles miSearchBookings.Click
+
+        'show search form to search for particular bookings with specified details
+        frmSearch.ShowDialog()
+
+    End Sub
+
+    Private Sub Remove_Click(ByVal sender As System.Object, ByVal e As System.Windows.Forms.DataGridViewCellEventArgs) Handles dgvBookings.CellContentClick
+        'remove a record when its Remove button is clicked
+
+        If e.ColumnIndex = 12 Then
+
+            'if column index is 12, remove cell
+            dgvBookings.Rows.RemoveAt(e.RowIndex)
+
+            'update total cost
+            Call updateTotalCost()
+
+        End If
+
+    End Sub
+
+End Class

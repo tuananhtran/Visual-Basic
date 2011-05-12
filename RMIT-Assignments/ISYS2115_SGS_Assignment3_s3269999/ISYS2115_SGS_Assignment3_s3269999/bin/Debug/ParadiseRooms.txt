@@ -1,0 +1,5 @@
+SU,Superior,42,150.00
+DE,Deluxe,57,178.00
+PD,Premium Deluxe,79,238.00
+JS,Junior Suite,90,420.00
+PS,Presidential Suite,145,780.00
